@@ -5,7 +5,7 @@ export default class CreateCustomers1596307292895
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
-        name: 'products',
+        name: 'customers',
         columns: [
           {
             name: 'id',
@@ -18,7 +18,11 @@ export default class CreateCustomers1596307292895
             name: 'name',
             type: 'varchar',
           },
-
+          {
+            name: 'email',
+            type: 'varchar',
+            isUnique: true,
+          },
           {
             name: 'created_at',
             type: 'timestamp',
