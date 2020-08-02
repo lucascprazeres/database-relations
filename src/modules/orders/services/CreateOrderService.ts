@@ -17,10 +17,6 @@ interface IRequest {
   products: IProduct[];
 }
 
-interface IProductsPriceById {
-  [id: string]: number;
-}
-
 @injectable()
 class CreateOrderService {
   constructor(
@@ -39,33 +35,36 @@ class CreateOrderService {
       throw new AppError('Customer not found.');
     }
 
-    const productIds = products.map(product => {
-      return {
-        id: product.id,
-      };
+    const foundProducts = await this.productsRepository.findAllById(
+      products.map(product => {
+        return { id: product.id };
+      }),
+    );
+
+    if (foundProducts.length !== products.length) {
+      throw new AppError('Product not found');
+    }
+
+    products.forEach(product => {
+      const quantityInDatabase = foundProducts.find(
+        ({ id }) => id === product.id,
+      )?.quantity;
+
+      if ((quantityInDatabase || 0) < product.quantity) {
+        throw new AppError('Invalid product quantity');
+      }
     });
 
-    const productList = await this.productsRepository.findAllById(productIds);
-
-    const productsPriceById: IProductsPriceById = {};
-
-    productList.forEach((_, index) => {
-      const { id, price } = productList[index];
-      productsPriceById[id] = price;
-    });
-
-    const productOrder = products.map(product => {
-      return {
+    const order = await this.ordersRepository.create({
+      customer,
+      products: products.map(product => ({
         product_id: product.id,
         quantity: product.quantity,
-        price: Number(productsPriceById[product.id]),
-      };
+        price: foundProducts.find(({ id }) => id === product.id)?.price || 0,
+      })),
     });
 
-    const order = this.ordersRepository.create({
-      customer,
-      products: productOrder,
-    });
+    await this.productsRepository.updateQuantity(products);
 
     return order;
   }

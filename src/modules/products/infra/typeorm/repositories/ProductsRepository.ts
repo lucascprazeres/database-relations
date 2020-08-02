@@ -9,10 +9,6 @@ interface IFindProducts {
   id: string;
 }
 
-interface IProductsPriceById {
-  [id: string]: number;
-}
-
 class ProductsRepository implements IProductsRepository {
   private ormRepository: Repository<Product>;
 
@@ -65,20 +61,15 @@ class ProductsRepository implements IProductsRepository {
 
     const foundProducts = await this.findAllById(productIds);
 
-    const productQuantiesById: IProductsPriceById = {};
-
-    foundProducts.forEach((_, index) => {
-      const { id, quantity } = foundProducts[index];
-      productQuantiesById[id] = quantity;
-    });
+    const findCorrespondingQuantityOrReturnZero = (product: Product): number =>
+      products.find(({ id }) => id === product.id)?.quantity || 0;
 
     const updatedProducts = foundProducts.map(product => {
-      const updatedProduct = {
+      return {
         ...product,
-        quantity: productQuantiesById[product.id] as number,
+        quantity:
+          product.quantity - findCorrespondingQuantityOrReturnZero(product),
       };
-
-      return updatedProduct;
     });
 
     await this.ormRepository.save(updatedProducts);
